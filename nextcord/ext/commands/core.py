@@ -97,6 +97,8 @@ __all__ = (
 )
 
 MISSING: Any = nextcord.utils.MISSING
+ApplicationCommand = nextcord.application_command.ApplicationCommand
+ApplicationSubcommand = nextcord.application_command.ApplicationSubcommand
 
 T = TypeVar('T')
 CogT = TypeVar('CogT', bound='Cog')
@@ -309,6 +311,11 @@ class Command(_BaseCommand, Generic[CogT, P, T]):
             Callable[Concatenate[CogT, ContextT, P], Coro[T]],
             Callable[Concatenate[ContextT, P], Coro[T]],
         ], **kwargs: Any):
+
+        if isinstance(func, (ApplicationCommand, ApplicationSubcommand)):
+            func = func.callback
+            func.__is_application_command__ = True
+            
         if not asyncio.iscoroutinefunction(func):
             raise TypeError('Callback must be a coroutine.')
 
@@ -930,6 +937,16 @@ class Command(_BaseCommand, Generic[CogT, P, T]):
         ctx.invoked_subcommand = None
         ctx.subcommand_passed = None
         injected = hooked_wrapped_callback(self, ctx, self.callback)
+
+        if getattr(ctx.command.callback, "__is_application_command__", False):  # type: ignore
+            fctx = nextcord.ext.commands.ApplicationContext(ctx)  # type: ignore
+            fctx.kwargs = ctx.kwargs
+            fctx.args = []
+            for item in ctx.args:
+                item = item if item != ctx else fctx
+                fctx.args.append(item)
+            ctx = fctx
+
         await injected(*ctx.args, **ctx.kwargs)
 
     async def reinvoke(self, ctx: Context, *, call_hooks: bool = False) -> None:

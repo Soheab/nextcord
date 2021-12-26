@@ -37,7 +37,7 @@ from typing import (
     Tuple,
     Union,
 )
-
+import nextcord
 from .abc import GuildChannel
 from .enums import ApplicationCommandType, ApplicationCommandOptionType, ChannelType
 from .errors import InvalidCommandType
@@ -654,6 +654,10 @@ class ApplicationSubcommand:
         kwargs:
             Keyword arguments to forward to the callback.
         """
+
+        if getattr(self.callback, "__is_application_command__", False) is True:
+            interaction = nextcord.ext.commands.ApplicationContext(interaction)
+
         if self._self_argument:
             await self.callback(self._self_argument, interaction, **kwargs)
         else:
