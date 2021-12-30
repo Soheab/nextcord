@@ -3,7 +3,6 @@ from typing import Union
 import nextcord
 from nextcord.ext.commands import Context
 from nextcord.ext.commands import view
-from nextcord.utils import get
 
 __all__ = ("ApplicationContext",)
 
@@ -15,21 +14,18 @@ class ApplicationContext:
     def __init__(self, cls: Union[Context, Interaction]) -> None:
         self.message = cls.message
         self.bot = getattr(cls, "bot", None)
-        self.prefix = "/"
-        self.clean_prefix = "/"  # type: ignore
         self.author = getattr(cls, "author", "user")
 
         for attr in (
+            "prefix",
+            "clean_prefix",
             "guild",
             "channel",
             "clean_content",
             "command",
-            "invoke",
-            "reinvoke",
             "view",
             "cog",
             "command_failed",
-            "send_help",
             "guild_id",
             "channel_id", 
             "permissions", 
