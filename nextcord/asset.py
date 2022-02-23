@@ -208,11 +208,17 @@ class Asset(AssetMixin):
 
     @classmethod
     def _from_guild_image(cls, state, guild_id: int, image: str, path: str) -> Asset:
+        animated = False
+        format = "png"
+        if path == "banners":
+            animated = image.startswith("a_")
+            format = "gif" if animated else "png"
+
         return cls(
             state,
-            url=f'{cls.BASE}/{path}/{guild_id}/{image}.png?size=1024',
+            url=f'{cls.BASE}/{path}/{guild_id}/{image}.{format}?size=1024',
             key=image,
-            animated=False,
+            animated=animated,
         )
 
     @classmethod
@@ -244,6 +250,14 @@ class Asset(AssetMixin):
             url=f'{cls.BASE}/banners/{user_id}/{banner_hash}.{format}?size=512',
             key=banner_hash,
             animated=animated
+        )
+    @classmethod
+    def _from_scheduled_event_image(cls, state, event_id: int, image_hash: str) -> Asset:
+        return cls(
+            state,
+            url=f'{cls.BASE}/guild-events/{event_id}/{image_hash}.png',
+            key=image_hash,
+            animated=False
         )
 
     def __str__(self) -> str:

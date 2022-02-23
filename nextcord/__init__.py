@@ -5,15 +5,16 @@ Discord API Wrapper
 A basic wrapper for the Discord API.
 
 :copyright: (c) 2015-present Rapptz
+:copyright: (c) 2021-present tag-epic
 :license: MIT, see LICENSE for more details.
 
 """
 
-__title__ = 'discord'
+__title__ = 'nextcord'
 __author__ = 'tag-epic & Rapptz'
 __license__ = 'MIT'
-__copyright__ = 'Copyright 2015-present Rapptz'
-__version__ = '2.0.0a4'
+__copyright__ = 'Copyright 2015-present Rapptz & tag-epic'
+__version__ = '2.0.0a8'
 
 __path__ = __import__('pkgutil').extend_path(__path__, __name__)
 
@@ -60,6 +61,7 @@ from .interactions import *
 from .components import *
 from .threads import *
 from .health_check import *
+from .scheduled_events import *
 from .application_command import *
 
 
