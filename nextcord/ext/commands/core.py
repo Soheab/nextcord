@@ -97,8 +97,6 @@ __all__ = (
 )
 
 MISSING: Any = nextcord.utils.MISSING
-ApplicationCommand = nextcord.application_command.ApplicationCommand
-ApplicationSubcommand = nextcord.application_command.ApplicationSubcommand
 
 T = TypeVar('T')
 CogT = TypeVar('CogT', bound='Cog')
@@ -312,14 +310,12 @@ class Command(_BaseCommand, Generic[CogT, P, T]):
             Callable[Concatenate[ContextT, P], Coro[T]],
         ], **kwargs: Any):
 
-        if isinstance(func, (ApplicationCommand, ApplicationSubcommand)):
-            print("APP COMMAND CORE.PY", func, type(func))
-            func.__app_command_class__ = func
-            func.callback.__app_command_class__ = func.__app_command_class__
+        if isinstance(func, (nextcord.application_command.ApplicationCommand, nextcord.application_command.ApplicationSubcommand)):  # type: ignore
+            command_func = func.callback
+            command_func.__application_command__ = func
+            command_func.__ext_command__ = self
+            func = command_func
 
-            func = func.callback
-            func.__is_application_command__ = True
-            
         if not asyncio.iscoroutinefunction(func):
             raise TypeError('Callback must be a coroutine.')
 
@@ -1377,7 +1373,7 @@ class GroupMixin(Generic[CogT]):
         cls: Type[CommandT] = MISSING,
         *args: Any,
         **kwargs: Any,
-    ) -> Callable[[Callable[Concatenate[ContextT, P], Coro[Any]]], CommandT]:
+    ) -> Callable[[Callable[Concatenate[ContextT, P], Coro[Any]]], CommandT]:  # type: ignore
         """A shortcut decorator that invokes :func:`.command` and adds it to
         the internal command list via :meth:`~.GroupMixin.add_command`.
 
@@ -1387,10 +1383,18 @@ class GroupMixin(Generic[CogT]):
             A decorator that converts the provided method into a Command, adds it to the bot, then returns it.
         """
         def decorator(func: Callable[Concatenate[ContextT, P], Coro[Any]]) -> CommandT:
+
             kwargs.setdefault('parent', self)
-            result = command(name=name, cls=cls, *args, **kwargs)(func)
-            self.add_command(result)
-            return result
+            if isinstance(func, (nextcord.application_command.ApplicationCommand, nextcord.application_command.ApplicationSubcommand)):  # type: ignore
+                command_func = func.callback
+                command_func.__application_command__ = func
+                command_func.__ext_command__ = command(name=name, cls=cls, *args, **kwargs)(command_func)
+                self.add_command(command_func.__ext_command__)
+                return command_func.__ext_command__  # type: ignore
+            else:
+                result = command(name=name, cls=cls, *args, **kwargs)(func)
+                self.add_command(result)
+                return result  # type: ignore
 
         return decorator
 

@@ -1,4 +1,5 @@
 
+from __future__ import annotations
 import nextcord
 from nextcord import SlashOption
 from nextcord.ext import commands
@@ -7,23 +8,23 @@ from nextcord.ext import commands
 bot = commands.Bot(command_prefix=".?")
 
 
+@bot.slash_command(name="ping", guild_ids=[890673374731321395])
 @bot.command(name="ping")
-@bot.slash_command(name="ping2", guild_ids=[890673374731321395])
-async def get_bot_ping(ctx, hello: str):
+async def get_bot_ping(ctx):
     print(ctx, type(ctx), dir(ctx), ctx.command, type(ctx.command))
     await ctx.send(
         embed=nextcord.Embed(description=f"**My ping: {round(bot.latency,1)} ms**", color=nextcord.Color.green())
     )
 
 class Cag(commands.Cog):
+    @nextcord.slash_command(name="pingcog", guild_ids=[890673374731321395])
     @commands.command(name="pingcog")
-    @nextcord.slash_command(name="ping2cog", guild_ids=[890673374731321395])
 
-    async def get_bot_ping_cog(self, ctx, hello: str):
+    async def get_bot_ping_cog(self, ctx):
         print(ctx, type(ctx), dir(ctx), ctx.command, type(ctx.command))
         await ctx.send(
             embed=nextcord.Embed(description=f"**My ping: {round(bot.latency,1)} ms**", color=nextcord.Color.green())
         )
 
 bot.add_cog(Cag())
-bot.run("KEKW")
+bot.run("lol")

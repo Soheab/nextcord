@@ -78,33 +78,24 @@ class ClientCog:
         return new_cls
 
     def _read_methods(self) -> None:
-        print("CLIENT COG READ METHODS", self)
         self.__cog_to_register__ = []
         for base in reversed(self.__class__.__mro__):
             for elem, value in base.__dict__.items():
                 is_static_method = isinstance(value, staticmethod)
                 if is_static_method:
                     value = value.__func__
-               # print("OUTISDE IF CLIENT COG", value, base, elem)
                 if isinstance(value, list):
                     for item in value:
-                        print("IN LIST VALUE LOOP", item, isinstance(item, nextcord.ext.commands.Command), hasattr(item.callback, "__is_application_command__"), hasattr(item._callback, "__is_application_command__"))
-                        if isinstance(item, nextcord.ext.commands.Command) and getattr(item.callback, "__is_application_command__", False):  # type: ignore
-                           print("IN IF CLIENT COG COMMAND", item, item.callback, hasattr(item.callback, "__is_application_command__"),
-                           hasattr(item.callback, "__app_command_class__"))
-                           print("COG CLINT CLASS IF STATEMRNT COMMAND APP", item.callback.__app_command_class__)
-                           value = item.callback.__app_command_class__
+                        if isinstance(item, nextcord.ext.commands.Command) and hasattr(item.callback, "__application_command__"):  # type: ignore
+                           value = item.callback.__application_command__
 
                 if isinstance(value, (ApplicationCommand, ApplicationSubcommand)):
-                    print("CLIENT COG, BOTH", value, elem, base)
                 if isinstance(value, ApplicationCommand):
-                    print("ISINSTANCE APP COMMAND", value, elem, base)
                     if isinstance(value, staticmethod):
-                        raise TypeError(f"Command {self.__name__}.{elem} can not be a staticmethod.")
+                        raise TypeError(f"Command {self.__name__}.{elem} can not be a staticmethod.")  # type: ignore
                     value.set_self_argument(self)
                     self.__cog_to_register__.append(value)
                 elif isinstance(value, ApplicationSubcommand):
-                    print("ISINSTANCE APP SUB COMMAND", value, elem, base)
                     value.set_self_argument(self)
 
     @property
@@ -471,22 +462,15 @@ class ApplicationSubcommand:
         return self._callback
 
     def set_callback(self, callback: Callable) -> ApplicationSubcommand:
-        from nextcord.ext.commands import Command
         """Sets the callback associated with this ApplicationCommand."""
-        print("set_callback", callback,type(callback), asyncio.iscoroutinefunction(callback))
-        if isinstance(callback, Command):
-            print("COMMMAND IF STATEMNT", callback, callback.callback, callback._callback, 
-            hasattr(callback.callback, "__is_application_command__"),
-            hasattr(callback._callback, "__is_application_command__"))
-            command = callback
-            callback = command.callback
-            callback.__command_class__ = command
-            callback.__command_params__ = command.params
+        if isinstance(callback, nextcord.ext.commands.Command):  # type: ignore
+            command_callback = callback.callback
+            callback.__ext_commands_params__ = command_callback.__ext_command__.params
+            callback = command_callback
             
-        print(callback, type(callback))
         if not asyncio.iscoroutinefunction(callback):
-            
             raise TypeError("Callback must be a coroutine.")
+
         self._callback = callback
         return self
 
@@ -540,13 +524,12 @@ class ApplicationSubcommand:
             self.name = self.callback.__name__
         first_arg = True
 
-       # print("_from_callback", callback, type(callback), signature(callback), typing.get_type_hints(callback))
-        aaa = signature(self.callback).parameters.items()
+        parameters = signature(self.callback).parameters.items()  # type: ignore
         
         if hasattr(callback, "__command_params__"):
-            aaa = callback.__command_params__
+            parameters = callback.__ext_commands_params__
         
-        for name, param in aaa:
+        for name, param in parameters:
             self_skip = name == "self"  # TODO: What kind of hardcoding is this, figure out a better way for self!
             if first_arg:
                 if not self_skip:
@@ -555,12 +538,14 @@ class ApplicationSubcommand:
                 if isinstance(param.annotation, str):
                     # Thank you Disnake for the guidance to use this.
                     if hasattr(callback, "__command_params__"):
-                        param = callback.__command_params__[name]
+                        param = callback.__ext_commands_params__[name]
                     else:
                         typehints = typing.get_type_hints(callback)
                         param = param.replace(annotation=typehints.get(name, param.empty))
+                        
                 arg = CommandOption(param)
-                self.options[arg.name] = arg
+                self.options[arg.name] = arg  # type: ignore
+
         return self
 
     # Data wrangling.
@@ -757,16 +742,14 @@ class ApplicationSubcommand:
         kwargs:
             Keyword arguments to forward to the callback.
         """
-        print(
-            "INVOKE SLASH FNC", self._callback, hasattr(self._callback, "__is_application_command__"),
-            hasattr(self.callback, "__is_application_command__"), hasattr(self.callback, "__command_class__"))
-        if hasattr(self._callback, "__is_application_command__") or hasattr(self.callback, "__command_class__"):
-            interaction = nextcord.ext.commands.ApplicationContext(interaction)
+        if hasattr(self._callback, "__ext_command__") or hasattr(self.callback, "__application_command__"):
+            interaction = nextcord.ext.commands.ApplicationContext(interaction)  # type: ignore
+            interaction.command = self
 
         if self._self_argument:
-            await self.callback(self._self_argument, interaction, **kwargs)
+            await self.callback(self._self_argument, interaction, **kwargs)  # type: ignore
         else:
-            await self.callback(interaction, **kwargs)
+            await self.callback(interaction, **kwargs)  # type: ignore
 
     def error(self, coro):
         # TODO: Parity with legacy commands.
@@ -1356,21 +1339,40 @@ def slash_command(
         register to guilds. Has no effect if `guild_ids` are never set or added to.
     """
     def decorator(func: Callable) -> ApplicationCommand:
-        print("SLASH DECORATOR", func, type(func), dir(func))
-        #if isinstance(func, nextcord.ext.commands.Command):
-         #   func.__is_application_command__ = True
-        if isinstance(func, ApplicationCommand):
-            raise TypeError("Callback is already an ApplicationCommandRequest.")
-        app_cmd = ApplicationCommand(
-            callback=func,
-            cmd_type=ApplicationCommandType.chat_input,
-            name=name,
-            description=description,
-            guild_ids=guild_ids,
-            default_permission=default_permission,
-            force_global=force_global
-        )
-        return app_cmd
+        if isinstance(func, nextcord.ext.commands.Command):
+            command_func = func.callback
+            if hasattr(command_func, "__ext_command__"):
+                command_func.__ext_command__ = command_func.__ext_command__
+            else:
+                command_func.__ext_command__ = func
+            
+            if hasattr(command_func, "__application_command__"):
+                command_func.__application_command__ = command_func.__application_command__
+            else:
+                command_func.__application_command__ = ApplicationCommand(
+                    callback=command_func,
+                    cmd_type=ApplicationCommandType.chat_input,
+                    name=name,
+                    description=description,
+                    guild_ids=guild_ids,
+                    default_permission=default_permission,
+                    force_global=force_global
+                )
+                return command_func.__application_command__
+        else:
+            if isinstance(func, ApplicationCommand):
+                raise TypeError("Callback is already an ApplicationCommandRequest.")
+            app_cmd = ApplicationCommand(
+                callback=func,
+                cmd_type=ApplicationCommandType.chat_input,
+                name=name,
+                description=description,
+                guild_ids=guild_ids,
+                default_permission=default_permission,
+                force_global=force_global
+            )
+            return app_cmd
+
     return decorator
 
 
