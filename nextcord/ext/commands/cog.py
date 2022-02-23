@@ -135,6 +135,19 @@ class CogMeta(type):
                 is_static_method = isinstance(value, staticmethod)
                 if is_static_method:
                     value = value.__func__
+                #print("commands cog", value, elem, base)
+                from nextcord.application_command import ApplicationCommand, ApplicationSubcommand
+                if isinstance(value, (ApplicationCommand, ApplicationSubcommand)):
+                    print(
+                        "yes app command, commands cog", value, value.callback,
+                        hasattr(value.callback, "__is_application_command__"), 
+                        hasattr(value._callback, "__is_application_command__"),
+                        hasattr(value.callback, '__command_class__'))
+                    a = value.callback.__command_class__
+                    a.callback.__is_application_command__ = True
+                    a.callback.__app_command_class__ = value
+                    commands[elem] = a
+
                 if isinstance(value, _BaseCommand):
                     if is_static_method:
                         raise TypeError(f'Command in method {base}.{elem!r} must not be staticmethod.')

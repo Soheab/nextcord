@@ -313,6 +313,10 @@ class Command(_BaseCommand, Generic[CogT, P, T]):
         ], **kwargs: Any):
 
         if isinstance(func, (ApplicationCommand, ApplicationSubcommand)):
+            print("APP COMMAND CORE.PY", func, type(func))
+            func.__app_command_class__ = func
+            func.callback.__app_command_class__ = func.__app_command_class__
+
             func = func.callback
             func.__is_application_command__ = True
             
