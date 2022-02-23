@@ -89,7 +89,6 @@ class ClientCog:
                         if isinstance(item, nextcord.ext.commands.Command) and hasattr(item.callback, "__application_command__"):  # type: ignore
                            value = item.callback.__application_command__
 
-                if isinstance(value, (ApplicationCommand, ApplicationSubcommand)):
                 if isinstance(value, ApplicationCommand):
                     if isinstance(value, staticmethod):
                         raise TypeError(f"Command {self.__name__}.{elem} can not be a staticmethod.")  # type: ignore
